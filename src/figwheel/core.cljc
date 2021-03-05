@@ -108,7 +108,7 @@
 ;;
 ;; set level (.setLevel logger goog.debug.Logger.Level.INFO)
 ;; disable   (.setCapturing log-console false)
-(defonce logger (glog/getLogger "Figwheel"))
+(defonce logger (glog/getLogger "Figwheel" goog.debug.Logger.Level.INFO))
 
 (defn ^:export console-logging []
   (when-not (gobj/get goog.debug.Console "instance")
@@ -259,9 +259,9 @@
                             goog.global
                             (map str (concat (string/split n #"\.") [f])))]
         (do
-          (glog/info logger (str "Calling " (pr-str hook-key) " hook - " n "." f))
+          (glog/info logger (str "Calling " (pr-str hook-key) " hook - " n "." f) nil)
           (apply hook args))
-        (glog/warning logger (str "Unable to find " (pr-str hook-key) " hook - " n "." f))))))
+        (glog/warning logger (str "Unable to find " (pr-str hook-key) " hook - " n "." f) nil)))))
 
 (defn ^:export reload-namespaces [namespaces figwheel-meta]
   ;; reconstruct serialized data
@@ -288,11 +288,11 @@
             (fn []
               (try
                 (when (not-empty to-reload)
-                  (glog/info logger (str "loaded " (pr-str to-reload)))
+                  (glog/info logger (str "loaded " (pr-str to-reload)) nil)
                   (call-hooks :after-load {:reloaded-namespaces to-reload})
                   (dispatch-event :figwheel.after-load {:reloaded-namespaces to-reload}))
                 (when-let [not-loaded (not-empty (filter (complement (set to-reload)) namespaces))]
-                  (glog/info logger (str "did not load " (pr-str not-loaded))))
+                  (glog/info logger (str "did not load " (pr-str not-loaded)) nil))
                 (finally
                   (swap! state assoc ::reload-state {}))))]
         (if (and (exists? js/figwheel.repl)
@@ -310,7 +310,7 @@
     (js/setTimeout #(dispatch-event :figwheel.compile-warnings {:warnings warnings}) 0))
   (swap! state update-in [::reload-state :warnings] concat warnings)
   (doseq [warning warnings]
-    (glog/warning logger (str "Compile Warning - " (:message warning) " in " (file-line-column warning)))))
+    (glog/warning logger (str "Compile Warning - " (:message warning) " in " (file-line-column warning)) nil)))
 
 (defn ^:export compile-warnings-remote [warnings-json]
   (compile-warnings (js->clj warnings-json :keywordize-keys true)))
@@ -329,7 +329,8 @@
      logger
      (cond-> "Compile Exception - "
        (or type message) (str (string/join " : " (filter some? [type message])))
-       file (str " in " (file-line-column exception-data))))
+       file (str " in " (file-line-column exception-data)))
+     nil)
     (finally
       (swap! state assoc-in [::reload-state] {}))))
 
